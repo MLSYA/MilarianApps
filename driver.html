@@ -47,61 +47,63 @@ const firebaseConfig = {
     let watchId = null;
     let isTracking = false;
 
-    function toggleTracking() {
-      const name = document.getElementById('driverName').value.trim();
-      const nopol = document.getElementById('driverNopol').value.trim().toUpperCase().replace(/\s+/g, '_');
+   function toggleTracking() {
+  const name = document.getElementById('driverName').value.trim();
+  let rawNopol = document.getElementById('driverNopol').value.trim().toUpperCase();
+  
+  if (!name || !rawNopol) {
+    alert('Mohon isi Nama dan Nopol terlebih dahulu!');
+    return;
+  }
 
-      if (!name || !nopol) {
-        alert('Mohon isi Nama dan Nopol terlebih dahulu!');
-        return;
-      }
+  // Sanitize Nopol agar aman digunakan sebagai Key Firebase (hapus spasi dan simbol)
+  const safeNopol = rawNopol.replace(/[^A-Z0-9]/g, '');
 
-      const btn = document.getElementById('btnShare');
-      const status = document.getElementById('statusText');
+  const btn = document.getElementById('btnShare');
+  const status = document.getElementById('statusText');
 
-      if (!isTracking) {
-        if ("geolocation" in navigator) {
-          // Mengambil lokasi dan melakukan update otomatis tiap ada perubahan posisi
-          watchId = navigator.geolocation.watchPosition(
-            (position) => {
-              const lat = position.coords.latitude;
-              const lng = position.coords.longitude;
-              const timestamp = new Date().toLocaleTimeString();
+  if (!isTracking) {
+    if ("geolocation" in navigator) {
+      watchId = navigator.geolocation.watchPosition(
+        (position) => {
+          const lat = position.coords.latitude;
+          const lng = position.coords.longitude;
+          const timestamp = new Date().toLocaleTimeString();
 
-              // Update data ke Firebase
-              database.ref('drivers/' + nopol).set({
-                nama: name,
-                nopol: nopol,
-                lat: lat,
-                lng: lng,
-                lastUpdate: timestamp
-              });
+          // Kirim data lengkap ke Firebase
+          database.ref('drivers/' + safeNopol).set({
+            nama: name,
+            nopol: rawNopol,
+            lat: Number(lat),
+            lng: Number(lng),
+            lastUpdate: timestamp,
+            updatedAt: firebase.database.ServerValue.TIMESTAMP
+          });
 
-              status.innerText = `Lokasi Terkirim! (${timestamp})`;
-            },
-            (error) => {
-              alert("Gagal mengambil lokasi: " + error.message);
-            },
-            { enableHighAccuracy: true, maximumAge: 0, timeout: 5000 }
-          );
+          status.innerText = `Lokasi Terkirim! (${timestamp})`;
+        },
+        (error) => {
+          alert("Gagal mengambil lokasi GPS: " + error.message);
+        },
+        { enableHighAccuracy: true, maximumAge: 0, timeout: 10000 }
+      );
 
-          isTracking = true;
-          btn.innerText = "Hentikan Membagikan Lokasi";
-          btn.style.backgroundColor = "#dc3545";
-          document.getElementById('driverName').disabled = true;
-          document.getElementById('driverNopol').disabled = true;
-        } else {
-          alert("GPS tidak didukung oleh browser Anda.");
-        }
-      } else {
-        // Hentikan pelacakan
-        navigator.geolocation.clearWatch(watchId);
-        isTracking = false;
-        btn.innerText = "Bagikan Lokasi Live";
-        btn.style.backgroundColor = "#28a745";
-        status.innerText = "Status: Berhenti Membagikan";
-        document.getElementById('driverName').disabled = false;
-        document.getElementById('driverNopol').disabled = false;
+      isTracking = true;
+      btn.innerText = "Hentikan Membagikan Lokasi";
+      btn.style.backgroundColor = "#dc3545";
+      document.getElementById('driverName').disabled = true;
+      document.getElementById('driverNopol').disabled = true;
+    } else {
+      alert("GPS tidak didukung oleh browser ini.");
+    }
+  } else {
+    navigator.geolocation.clearWatch(watchId);
+    isTracking = false;
+    btn.innerText = "Bagikan Lokasi Live";
+    btn.style.backgroundColor = "#28a745";
+    status.innerText = "Status: Berhenti Membagikan";
+    document.getElementById('driverName').disabled = false;
+    document.getElementById('driverNopol').disabled = false;
       }
     }
   </script>
