@@ -3,13 +3,12 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Aplikasi Induk - Live Tracking</title>
+  <title>Aplikasi Induk - Live Tracking CDD Box</title>
   
   <!-- Leaflet CSS -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
   
   <style>
-    /* Menjamin peta menggunakan seluruh layar HP/Laptop */
     html, body {
       height: 100%;
       margin: 0;
@@ -20,7 +19,7 @@
     #map {
       width: 100%;
       height: 100vh;
-      background-color: #e5e3df; /* Warna latar dasar jika peta belum memuat tile */
+      background-color: #e5e3df;
     }
 
     .info-panel {
@@ -32,7 +31,7 @@
       padding: 12px 16px;
       border-radius: 8px;
       box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-      max-width: 260px;
+      max-width: 280px;
     }
 
     .info-panel h3 {
@@ -45,6 +44,17 @@
       font-size: 13px;
       padding: 6px 0;
       border-bottom: 1px solid #eee;
+      cursor: pointer;
+    }
+
+    /* Style CSS untuk Rotasi Ikon Mobil Tampak Atas secara Halus */
+    .cdd-box-icon {
+      transition: all 0.5s ease-in-out;
+    }
+    .cdd-box-icon img {
+      width: 100%;
+      height: 100%;
+      transition: transform 0.4s ease-in-out;
     }
   </style>
 
@@ -61,12 +71,12 @@
   <div class="info-panel">
     <h3>Driver Aktif (<span id="totalDrivers">0</span>)</h3>
     <div id="driverList">
-      <small style="color: #666;">Menghubungkan ke database...</small>
+      <small style="color: #888;">Menghubungkan ke database...</small>
     </div>
   </div>
 
   <script>
-    // 1. ISIKAN KREDENSIAL FIREBASE ANDA
+    // 1. KREDENSIAL FIREBASE
     const firebaseConfig = {
   apiKey: "AIzaSyA3Ctgfp-1D5HhJbTToljYUmJ62jCmutWg",
   authDomain: "milarianapps.firebaseapp.com",
@@ -78,31 +88,51 @@
   measurementId: "G-WBPR6JQVJQ"
     };
 
-    // Inisialisasi Firebase aman
     if (!firebase.apps.length) {
       firebase.initializeApp(firebaseConfig);
     }
     const database = firebase.database();
 
     // 2. Inisialisasi Peta
-    const map = L.map('map').setView([-6.200000, 106.816666], 11);
+    const map = L.map('map').setView([-6.200000, 106.816666], 12);
 
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       maxZoom: 19,
       attribution: '© OpenStreetMap'
     }).addTo(map);
 
-    // Ikon Mobil Box
-    const truckIcon = L.icon({
-      iconUrl: 'https://cdn-icons-png.flaticon.com/512/2554/2554978.png',
-      iconSize: [38, 38],
-      iconAnchor: [19, 19],
-      popupAnchor: [0, -15]
-    });
+    // Fungsi membuat HTML Ikon CDD Box Tampak Atas dengan Rotasi CSS
+    function createCddIconHtml(heading = 0) {
+      // SVG / Gambar Mobil CDD Box Tampak Atas
+      const truckSvg = `
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 80" width="30" height="60">
+          <!-- Kepala Kabin CDD -->
+          <rect x="8" y="2" width="24" height="18" rx="4" fill="#d9534f" stroke="#333" stroke-width="1.5" />
+          <rect x="10" y="5" width="20" height="6" rx="1" fill="#87ceeb" />
+          <!-- Kaca Spion -->
+          <rect x="4" y="10" width="4" height="6" fill="#333" />
+          <rect x="32" y="10" width="4" height="6" fill="#333" />
+          <!-- Karoseri CDD Box Belakang -->
+          <rect x="6" y="22" width="28" height="52" rx="2" fill="#e9ecef" stroke="#333" stroke-width="2" />
+          <line x1="20" y1="22" x2="20" y2="74" stroke="#ccc" stroke-width="1" />
+          <!-- Ban -->
+          <rect x="4" y="26" width="3" height="10" fill="#111" />
+          <rect x="33" y="26" width="3" height="10" fill="#111" />
+          <rect x="4" y="60" width="3" height="10" fill="#111" />
+          <rect x="33" y="60" width="3" height="10" fill="#111" />
+        </svg>
+      `;
+
+      return `
+        <div style="transform: rotate(${heading}deg); transform-origin: center center; width: 30px; height: 60px;">
+          ${truckSvg}
+        </div>
+      `;
+    }
 
     const markers = {};
 
-    // 3. Ambil data Realtime
+    // 3. Listener Realtime Firebase
     database.ref('drivers').on('value', (snapshot) => {
       const data = snapshot.val();
       const driverListEl = document.getElementById('driverList');
@@ -122,29 +152,48 @@
         const driver = data[key];
         const lat = Number(driver.lat);
         const lng = Number(driver.lng);
+        const heading = Number(driver.heading || 0);
+        const speed = Number(driver.speed || 0);
 
         if (!isNaN(lat) && !isNaN(lng) && lat !== 0 && lng !== 0) {
           count++;
           bounds.push([lat, lng]);
 
           const popupContent = `
-            <b>🚛 ${driver.nama || 'Driver'}</b><br>
-            <b>Nopol:</b> ${driver.nopol || '-'}<br>
-            <small><b>Update:</b> ${driver.lastUpdate || '-'}</small>
+            <div style="font-size:13px; line-height:1.5;">
+              <b style="color:#d9534f; font-size:14px;">🚚 CDD Box - ${driver.nama || 'Driver'}</b><br>
+              <b>Nopol:</b> ${driver.nopol || '-'}<br>
+              <b>Kecepatan:</b> ${speed} km/jam<br>
+              <b>Arah Rotasi:</b> ${heading}°<br>
+              <small><b>Update:</b> ${driver.lastUpdate || '-'}</small>
+            </div>
           `;
 
+          // Buat Leaflet DivIcon dengan rotasi dinamis
+          const customDivIcon = L.divIcon({
+            className: 'cdd-box-icon',
+            html: createCddIconHtml(heading),
+            iconSize: [30, 60],
+            iconAnchor: [15, 30],
+            popupAnchor: [0, -25]
+          });
+
           if (markers[key]) {
+            // Update posisi dan rotasi ikon
             markers[key].setLatLng([lat, lng]);
+            markers[key].setIcon(customDivIcon);
             markers[key].getPopup().setContent(popupContent);
           } else {
-            const marker = L.marker([lat, lng], { icon: truckIcon }).addTo(map);
+            // Buat marker baru
+            const marker = L.marker([lat, lng], { icon: customDivIcon }).addTo(map);
             marker.bindPopup(popupContent);
             markers[key] = marker;
           }
 
           listHTML += `
-            <div class="driver-item" onclick="focusDriver('${key}')" style="cursor:pointer;">
-              <b>🚛 ${driver.nama || 'Driver'}</b> (${driver.nopol || '-'})
+            <div class="driver-item" onclick="focusDriver('${key}')">
+              <b>🚚 ${driver.nama || 'Driver'}</b> (${driver.nopol || '-'})<br>
+              <small style="color:#666;">Kecepatan: ${speed} km/j | Update: ${driver.lastUpdate || '-'}</small>
             </div>
           `;
         }
@@ -162,7 +211,7 @@
 
     function focusDriver(key) {
       if (markers[key]) {
-        map.setView(markers[key].getLatLng(), 16);
+        map.setView(markers[key].getLatLng(), 17);
         markers[key].openPopup();
       }
     }
