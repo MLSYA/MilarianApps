@@ -48,36 +48,22 @@ const firebaseConfig = {
 // Dengarkan perubahan data driver secara Realtime
 database.ref('drivers').on('value', (snapshot) => {
   const data = snapshot.val();
-  
   if (!data) return;
-
-  const bounds = []; // Untuk auto-zoom peta ke lokasi driver
 
   for (let key in data) {
     const driver = data[key];
-    
-    // Pastikan koordinat valid sebelum menggambar marker
-    if (driver && driver.lat && driver.lng) {
-      const lat = Number(driver.lat);
-      const lng = Number(driver.lng);
-      bounds.push([lat, lng]);
 
-      const popupContent = `
-        <div style="font-size:14px;">
-          <b>Driver:</b> ${driver.nama}<br>
-          <b>Nopol:</b> ${driver.nopol}<br>
-          <small><b>Update:</b> ${driver.lastUpdate || '-'}</small>
-        </div>
-      `;
+    // Konversi paksa ke Number
+    const lat = Number(driver.lat);
+    const lng = Number(driver.lng);
 
+    // Cek apakah angka valid (bukan NaN)
+    if (!isNaN(lat) && !isNaN(lng) && lat !== 0 && lng !== 0) {
       if (markers[key]) {
-        // Jika marker sudah ada, geser posisinya
         markers[key].setLatLng([lat, lng]);
-        markers[key].getPopup().setContent(popupContent);
       } else {
-        // Jika marker belum ada, buat marker baru
         const marker = L.marker([lat, lng]).addTo(map);
-        marker.bindPopup(popupContent);
+        marker.bindPopup(`<b>${driver.nama}</b><br>${driver.nopol}`);
         markers[key] = marker;
       }
     }
