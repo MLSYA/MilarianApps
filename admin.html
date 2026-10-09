@@ -3,52 +3,186 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Aplikasi Induk - Live Tracking CDD Box</title>
+  <title>Dashboard Fleet Tracking CDD Box - Masaya Trans</title>
   
   <!-- Leaflet CSS -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
   
   <style>
+    * { box-sizing: border-box; }
     html, body {
       height: 100%;
       margin: 0;
       padding: 0;
-      font-family: Arial, sans-serif;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     }
 
-    #map {
-      width: 100%;
+    .app-container {
+      display: flex;
+      width: 100vw;
       height: 100vh;
-      background-color: #e5e3df;
+      overflow: hidden;
     }
 
-    .info-panel {
-      position: absolute;
-      top: 15px;
-      right: 15px;
+    /* Sidebar Kiri - Dashboard */
+    .sidebar {
+      width: 320px;
+      height: 100%;
+      background: #1e293b;
+      color: #f8fafc;
+      display: flex;
+      flex-direction: column;
       z-index: 1000;
-      background: rgba(255, 255, 255, 0.95);
-      padding: 12px 16px;
-      border-radius: 8px;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-      max-width: 280px;
+      box-shadow: 4px 0 12px rgba(0,0,0,0.15);
     }
 
-    .info-panel h3 {
-      margin: 0 0 8px 0;
-      font-size: 15px;
-      color: #333;
+    .sidebar-header {
+      padding: 16px;
+      background: #0f172a;
+      border-bottom: 1px solid #334155;
     }
 
-    .driver-item {
-      font-size: 13px;
-      padding: 6px 0;
-      border-bottom: 1px solid #eee;
+    .sidebar-header h2 {
+      margin: 0 0 4px 0;
+      font-size: 18px;
+      color: #38bdf8;
+    }
+
+    .sidebar-header p {
+      margin: 0;
+      font-size: 12px;
+      color: #94a3b8;
+    }
+
+    /* Category / Filter Tabs */
+    .filter-tabs {
+      display: flex;
+      background: #0f172a;
+      padding: 6px;
+      gap: 4px;
+      border-bottom: 1px solid #334155;
+    }
+
+    .tab-btn {
+      flex: 1;
+      padding: 8px 4px;
+      background: transparent;
+      border: none;
+      color: #94a3b8;
+      font-size: 12px;
+      font-weight: 600;
+      border-radius: 4px;
       cursor: pointer;
+      transition: all 0.2s;
     }
 
-    .cdd-box-icon {
-      transition: all 0.3s ease-in-out;
+    .tab-btn.active {
+      background: #3b82f6;
+      color: #ffffff;
+    }
+
+    /* Driver List Container */
+    .driver-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 12px;
+    }
+
+    .driver-card {
+      background: #334155;
+      border-radius: 6px;
+      padding: 10px 12px;
+      margin-bottom: 8px;
+      cursor: pointer;
+      border-left: 4px solid #64748b;
+      transition: transform 0.15s, background 0.15s;
+    }
+
+    .driver-card:hover {
+      background: #475569;
+      transform: translateX(2px);
+    }
+
+    .driver-card.moving { border-left-color: #22c55e; }
+    .driver-card.idle { border-left-color: #eab308; }
+
+    .card-title {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 4px;
+    }
+
+    .driver-name {
+      font-weight: bold;
+      font-size: 14px;
+      color: #f1f5f9;
+    }
+
+    .nopol-badge {
+      background: #0f172a;
+      color: #f8fafc;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-family: monospace;
+    }
+
+    .card-info {
+      font-size: 12px;
+      color: #cbd5e1;
+      display: flex;
+      justify-content: space-between;
+    }
+
+    /* Map Area */
+    #map {
+      flex: 1;
+      height: 100%;
+      background-color: #e2e8f0;
+    }
+
+    /* Custom Leaflet Marker Styling */
+    .vehicle-marker-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .nopol-watermark {
+      background: rgba(15, 23, 42, 0.85);
+      color: #ffffff;
+      font-size: 10px;
+      font-weight: bold;
+      padding: 1px 5px;
+      border-radius: 3px;
+      border: 1px solid #38bdf8;
+      white-space: nowrap;
+      margin-bottom: 2px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+      font-family: monospace;
+    }
+
+    .truck-svg-wrapper {
+      transition: transform 0.3s ease-in-out;
+    }
+
+    /* Popup Styling */
+    .leaflet-popup-content-wrapper {
+      border-radius: 8px;
+      padding: 4px;
+    }
+    .popup-box {
+      font-size: 12px;
+      line-height: 1.5;
+    }
+    .popup-box h4 {
+      margin: 0 0 6px 0;
+      color: #0284c7;
+      font-size: 14px;
+      border-bottom: 1px solid #e2e8f0;
+      padding-bottom: 4px;
     }
   </style>
 
@@ -60,17 +194,33 @@
 </head>
 <body>
 
-  <div id="map"></div>
+  <div class="app-container">
+    <!-- Sidebar Kiri Dashboard -->
+    <div class="sidebar">
+      <div class="sidebar-header">
+        <h2>Monitoring Armada</h2>
+        <p>Live Fleet Tracking System</p>
+      </div>
 
-  <div class="info-panel">
-    <h3>Driver Aktif (<span id="totalDrivers">0</span>)</h3>
-    <div id="driverList">
-      <small style="color: #888;">Menghubungkan ke database...</small>
+      <!-- Filter Kategori -->
+      <div class="filter-tabs">
+        <button class="tab-btn active" onclick="setFilter('all')">Semua (<span id="cnt-all">0</span>)</button>
+        <button class="tab-btn" onclick="setFilter('moving')">Jalan (<span id="cnt-moving">0</span>)</button>
+        <button class="tab-btn" onclick="setFilter('idle')">Berhenti (<span id="cnt-idle">0</span>)</button>
+      </div>
+
+      <!-- Daftar Mobil -->
+      <div class="driver-list" id="driverList">
+        <small style="color: #94a3b8;">Menghubungkan ke server database...</small>
+      </div>
     </div>
+
+    <!-- Area Peta Utama -->
+    <div id="map"></div>
   </div>
 
   <script>
-    // 1. KREDENSIAL FIREBASE (Isi dengan milik Anda)
+    // 1. KREDENSIAL FIREBASE
     const firebaseConfig = {
   apiKey: "AIzaSyA3Ctgfp-1D5HhJbTToljYUmJ62jCmutWg",
   authDomain: "milarianapps.firebaseapp.com",
@@ -95,114 +245,157 @@
       attribution: '© OpenStreetMap'
     }).addTo(map);
 
-    // Fungsi Ikon SVG CDD Box: Kepala Putih (#ffffff) & Bodi Abu-abu (#6c757d)
-    function createCddIconHtml(heading = 0) {
+    let currentFilter = 'all';
+    let driversData = {};
+    const markers = {};
+
+    // 3. Fungsi Membuat Ikon CDD Box Ukuran Diperkecil + Watermark Nopol
+    function createVehicleMarkerHtml(nopol, heading = 0) {
+      // SVG CDD Box diperkecil (Ukuran 22px x 44px)
       const truckSvg = `
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 80" width="30" height="60">
-          <!-- Kepala (Kabin) CDD - Warna Putih -->
-          <rect x="8" y="2" width="24" height="18" rx="4" fill="#ffffff" stroke="#333333" stroke-width="1.5" />
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 30 60" width="22" height="44">
+          <!-- Kepala/Kabin (Warna Putih) -->
+          <rect x="5" y="2" width="20" height="14" rx="3" fill="#ffffff" stroke="#111111" stroke-width="1.2" />
           <!-- Kaca Depan -->
-          <rect x="10" y="5" width="20" height="6" rx="1" fill="#87ceeb" stroke="#333333" stroke-width="0.5" />
-          <!-- Kaca Spion Kiri & Kanan -->
-          <rect x="4" y="10" width="4" height="6" fill="#333333" />
-          <rect x="32" y="10" width="4" height="6" fill="#333333" />
+          <rect x="7" y="4" width="16" height="5" rx="1" fill="#38bdf8" stroke="#111111" stroke-width="0.5" />
+          <!-- Kaca Spion -->
+          <rect x="2" y="8" width="3" height="5" fill="#111111" />
+          <rect x="25" y="8" width="3" height="5" fill="#111111" />
           
-          <!-- Karoseri Box Belakang - Warna Abu-abu -->
-          <rect x="6" y="22" width="28" height="52" rx="2" fill="#6c757d" stroke="#212529" stroke-width="2" />
-          <!-- Garis Lis Atas Box -->
-          <line x1="20" y1="22" x2="20" y2="74" stroke="#495057" stroke-width="1.5" />
+          <!-- Box/Karoseri Belakang (Warna Abu-Abu) -->
+          <rect x="4" y="17" width="22" height="40" rx="2" fill="#64748b" stroke="#0f172a" stroke-width="1.5" />
+          <line x1="15" y1="17" x2="15" y2="57" stroke="#475569" stroke-width="1" />
           
-          <!-- Ban Mobil -->
-          <rect x="3" y="26" width="3" height="10" fill="#111111" />
-          <rect x="34" y="26" width="3" height="10" fill="#111111" />
-          <rect x="3" y="60" width="3" height="10" fill="#111111" />
-          <rect x="34" y="60" width="3" height="10" fill="#111111" />
+          <!-- Ban -->
+          <rect x="2" y="20" width="2" height="8" fill="#000000" />
+          <rect x="26" y="20" width="2" height="8" fill="#000000" />
+          <rect x="2" y="46" width="2" height="8" fill="#000000" />
+          <rect x="26" y="46" width="2" height="8" fill="#000000" />
         </svg>
       `;
 
       return `
-        <div style="transform: rotate(${heading}deg); transform-origin: center center; width: 30px; height: 60px;">
-          ${truckSvg}
+        <div class="vehicle-marker-container">
+          <!-- Watermark Nopol di Atas Ikon -->
+          <div class="nopol-watermark">${nopol || 'CDD'}</div>
+          <!-- Ikon Rotasi Mobil -->
+          <div class="truck-svg-wrapper" style="transform: rotate(${heading}deg); transform-origin: center center;">
+            ${truckSvg}
+          </div>
         </div>
       `;
     }
 
-    const markers = {};
-
-    // 3. Listener Realtime Firebase
-    database.ref('drivers').on('value', (snapshot) => {
-      const data = snapshot.val();
+    // 4. Update Render UI Dashboard & Markers
+    function renderDashboard() {
       const driverListEl = document.getElementById('driverList');
-      const totalDriversEl = document.getElementById('totalDrivers');
-
-      if (!data) {
-        driverListEl.innerHTML = '<small style="color: #888;">Belum ada driver terhubung.</small>';
-        totalDriversEl.innerText = "0";
-        return;
-      }
-
       const bounds = [];
-      let count = 0;
+      
+      let countAll = 0;
+      let countMoving = 0;
+      let countIdle = 0;
       let listHTML = '';
 
-      for (let key in data) {
-        const driver = data[key];
+      for (let key in driversData) {
+        const driver = driversData[key];
         const lat = Number(driver.lat);
         const lng = Number(driver.lng);
         const heading = Number(driver.heading || 0);
         const speed = Number(driver.speed || 0);
+        const isMoving = speed > 2;
 
         if (!isNaN(lat) && !isNaN(lng) && lat !== 0 && lng !== 0) {
-          count++;
-          bounds.push([lat, lng]);
+          countAll++;
+          if (isMoving) countMoving++;
+          else countIdle++;
 
-          const popupContent = `
-            <div style="font-size:13px; line-height:1.5;">
-              <b style="color:#333; font-size:14px;">🚚 CDD Box - ${driver.nama || 'Driver'}</b><br>
-              <b>Nopol:</b> ${driver.nopol || '-'}<br>
-              <b>Kecepatan:</b> ${speed} km/jam<br>
-              <b>Arah Rotasi:</b> ${heading}°<br>
-              <small><b>Update:</b> ${driver.lastUpdate || '-'}</small>
-            </div>
-          `;
+          // Cek Filter Kategori Sidebar
+          const matchFilter = (currentFilter === 'all') || 
+                              (currentFilter === 'moving' && isMoving) || 
+                              (currentFilter === 'idle' && !isMoving);
 
-          const customDivIcon = L.divIcon({
-            className: 'cdd-box-icon',
-            html: createCddIconHtml(heading),
-            iconSize: [30, 60],
-            iconAnchor: [15, 30],
-            popupAnchor: [0, -25]
-          });
+          if (matchFilter) {
+            bounds.push([lat, lng]);
 
-          if (markers[key]) {
-            markers[key].setLatLng([lat, lng]);
-            markers[key].setIcon(customDivIcon);
-            markers[key].getPopup().setContent(popupContent);
+            const popupContent = `
+              <div class="popup-box">
+                <h4>🚛 CDD Box - ${driver.nama || 'Driver'}</h4>
+                <b>Nopol:</b> ${driver.nopol || '-'}<br>
+                <b>Kecepatan:</b> ${speed} km/jam<br>
+                <b>Status:</b> ${isMoving ? '<span style="color:green;font-weight:bold;">Bergerak</span>' : '<span style="color:orange;font-weight:bold;">Berhenti</span>'}<br>
+                <b>Update:</b> ${driver.lastUpdate || '-'}
+              </div>
+            `;
+
+            const customDivIcon = L.divIcon({
+              className: '',
+              html: createVehicleMarkerHtml(driver.nopol, heading),
+              iconSize: [60, 65],
+              iconAnchor: [30, 45],
+              popupAnchor: [0, -40]
+            });
+
+            if (markers[key]) {
+              markers[key].setLatLng([lat, lng]);
+              markers[key].setIcon(customDivIcon);
+              markers[key].getPopup().setContent(popupContent);
+            } else {
+              const marker = L.marker([lat, lng], { icon: customDivIcon }).addTo(map);
+              marker.bindPopup(popupContent);
+              markers[key] = marker;
+            }
+
+            listHTML += `
+              <div class="driver-card ${isMoving ? 'moving' : 'idle'}" onclick="focusDriver('${key}')">
+                <div class="card-title">
+                  <span class="driver-name">${driver.nama || 'Driver'}</span>
+                  <span class="nopol-badge">${driver.nopol || '-'}</span>
+                </div>
+                <div class="card-info">
+                  <span>${isMoving ? '🟢 ' + speed + ' km/jam' : '🟠 Berhenti'}</span>
+                  <span>${driver.lastUpdate || '-'}</span>
+                </div>
+              </div>
+            `;
           } else {
-            const marker = L.marker([lat, lng], { icon: customDivIcon }).addTo(map);
-            marker.bindPopup(popupContent);
-            markers[key] = marker;
+            // Sembunyikan marker yang tidak sesuai filter
+            if (markers[key]) {
+              map.removeLayer(markers[key]);
+              delete markers[key];
+            }
           }
-
-          listHTML += `
-            <div class="driver-item" onclick="focusDriver('${key}')">
-              <b>🚚 ${driver.nama || 'Driver'}</b> (${driver.nopol || '-'})<br>
-              <small style="color:#666;">Kecepatan: ${speed} km/j | Update: ${driver.lastUpdate || '-'}</small>
-            </div>
-          `;
         }
       }
 
-      totalDriversEl.innerText = count;
-      driverListEl.innerHTML = listHTML || '<small style="color: #888;">Data koordinat belum valid.</small>';
+      // Update Angka Statistik Kategori Tab
+      document.getElementById('cnt-all').innerText = countAll;
+      document.getElementById('cnt-moving').innerText = countMoving;
+      document.getElementById('cnt-idle').innerText = countIdle;
 
-      if (bounds.length > 0) {
-        map.fitBounds(bounds, { maxZoom: 15, padding: [40, 40] });
+      driverListEl.innerHTML = listHTML || '<small style="color: #cbd5e1;">Tidak ada unit pada kategori ini.</small>';
+
+      if (bounds.length > 0 && currentFilter === 'all') {
+        map.fitBounds(bounds, { maxZoom: 15, padding: [50, 50] });
       }
+    }
+
+    // 5. Listener Realtime Firebase Database
+    database.ref('drivers').on('value', (snapshot) => {
+      driversData = snapshot.val() || {};
+      renderDashboard();
     }, (error) => {
-      document.getElementById('driverList').innerHTML = `<span style="color:red;">Error: ${error.message}</span>`;
+      document.getElementById('driverList').innerHTML = `<span style="color:#ef4444;">Error: ${error.message}</span>`;
     });
 
+    // 6. Fungsi Switch Tab Filter Kategori
+    function setFilter(filter) {
+      currentFilter = filter;
+      document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+      event.target.classList.add('active');
+      renderDashboard();
+    }
+
+    // 7. Fokus Peta saat Card Driver di Sidebar Diklik
     function focusDriver(key) {
       if (markers[key]) {
         map.setView(markers[key].getLatLng(), 17);
