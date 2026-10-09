@@ -3,12 +3,13 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Aplikasi Induk - Live Tracking Driver (Mobil Box)</title>
+  <title>Aplikasi Induk - Live Tracking Driver</title>
   
   <!-- Leaflet CSS -->
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
   
   <style>
+    /* Wajib: Set tinggi layar agar peta tidak berukuran 0px */
     html, body {
       height: 100%;
       margin: 0;
@@ -22,7 +23,6 @@
       z-index: 1;
     }
 
-    /* Panel Info Melayang di Pojok Kanan Atas */
     .info-panel {
       position: absolute;
       top: 15px;
@@ -32,14 +32,14 @@
       padding: 15px;
       border-radius: 8px;
       box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-      max-width: 300px;
+      max-width: 280px;
       max-height: 80vh;
       overflow-y: auto;
     }
 
     .info-panel h3 {
       margin: 0 0 10px 0;
-      font-size: 16px;
+      font-size: 15px;
       color: #333;
       border-bottom: 2px solid #007bff;
       padding-bottom: 5px;
@@ -70,32 +70,18 @@
       font-size: 11px;
       margin-left: 5px;
     }
-
-    /* Styling Tampilan Pop-up Peta */
-    .custom-popup {
-      font-size: 13px;
-      line-height: 1.6;
-    }
-    .custom-popup h4 {
-      margin: 0 0 5px 0;
-      color: #007bff;
-      font-size: 15px;
-      border-bottom: 1px solid #ddd;
-      padding-bottom: 4px;
-    }
   </style>
 
-  <!-- Firebase SDK -->
+  <!-- Firebase SDK (v8) -->
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
   <!-- Leaflet JS -->
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
 </head>
 <body>
 
   <div id="map"></div>
 
-  <!-- Panel Informasi Driver -->
   <div class="info-panel">
     <h3>Driver Aktif (<span id="totalDrivers">0</span>)</h3>
     <div id="driverList">
@@ -104,7 +90,7 @@
   </div>
 
   <script>
-    // 1. Konfigurasi Firebase
+    // 1. Konfigurasi Firebase (Sesuaikan dengan data Firebase Anda)
     const firebaseConfig = {
       apiKey: "YOUR_API_KEY",
       authDomain: "YOUR_PROJECT.firebaseapp.com",
@@ -115,7 +101,10 @@
       appId: "YOUR_APP_ID"
     };
 
-    firebase.initializeApp(firebaseConfig);
+    // Inisialisasi Firebase
+    if (!firebase.apps.length) {
+      firebase.initializeApp(firebaseConfig);
+    }
     const database = firebase.database();
 
     // 2. Inisialisasi Peta
@@ -126,17 +115,17 @@
       attribution: '© OpenStreetMap'
     }).addTo(map);
 
-    // 3. Membuat Custom Icon Mobil Box / Truk
+    // Custom Icon Mobil Box
     const truckIcon = L.icon({
-      iconUrl: 'https://cdn-icons-png.flaticon.com/512/2554/2554978.png', // Gambar Mobil Box / Delivery Truck
-      iconSize: [42, 42],       // Ukuran ikon (lebar, tinggi)
-      iconAnchor: [21, 21],     // Titik tengah ikon pada posisi koordinat GPS
-      popupAnchor: [0, -20]     // Posisi pop-up muncul di atas ikon
+      iconUrl: 'https://cdn-icons-png.flaticon.com/512/2554/2554978.png',
+      iconSize: [40, 40],
+      iconAnchor: [20, 20],
+      popupAnchor: [0, -18]
     });
 
     const markers = {};
 
-    // 4. Membaca Data Realtime Firebase
+    // 3. Membaca Data Realtime Firebase
     database.ref('drivers').on('value', (snapshot) => {
       const data = snapshot.val();
       const driverListEl = document.getElementById('driverList');
@@ -154,6 +143,8 @@
 
       for (let key in data) {
         const driver = data[key];
+        
+        // Konversi koordinat ke Number
         const lat = Number(driver.lat);
         const lng = Number(driver.lng);
 
@@ -161,29 +152,23 @@
           activeCount++;
           bounds.push([lat, lng]);
 
-          // Konten Pop-Up Saat Ikon Mobil Box Diklik
           const popupContent = `
-            <div class="custom-popup">
-              <h4>🚛 Detail Driver</h4>
-              <b>Nama Driver:</b> ${driver.nama || '-'}<br>
-              <b>Nomor Polisi:</b> <span style="background:#e9ecef; padding:2px 6px; border-radius:3px; font-weight:bold;">${driver.nopol || '-'}</span><br>
-              <b>Update Terakhir:</b> ${driver.lastUpdate || '-'}<br>
-              <b>Koordinat:</b> ${lat.toFixed(5)}, ${lng.toFixed(5)}
+            <div style="font-size: 13px; line-height: 1.5;">
+              <b style="font-size: 14px; color: #007bff;">🚛 ${driver.nama || 'Driver'}</b><br>
+              <b>Nopol:</b> ${driver.nopol || '-'}<br>
+              <b>Update Terakhir:</b> ${driver.lastUpdate || '-'}
             </div>
           `;
 
           if (markers[key]) {
-            // Update posisi & data pop-up jika marker sudah ada
             markers[key].setLatLng([lat, lng]);
             markers[key].getPopup().setContent(popupContent);
           } else {
-            // Buat Marker baru menggunakan icon Mobil Box (truckIcon)
             const marker = L.marker([lat, lng], { icon: truckIcon }).addTo(map);
             marker.bindPopup(popupContent);
             markers[key] = marker;
           }
 
-          // Tambahkan ke panel daftar driver di kanan atas
           listHTML += `
             <div class="driver-item" onclick="focusDriver('${key}')">
               <span class="driver-name">🚛 ${driver.nama || 'Driver'}</span> 
@@ -200,7 +185,11 @@
       if (bounds.length > 0) {
         map.fitBounds(bounds, { maxZoom: 15, padding: [50, 50] });
       }
+    }, (error) => {
+      console.error("Gagal membaca Firebase:", error);
+      alert("Error membaca database Firebase: " + error.message);
     });
+
     function focusDriver(key) {
       if (markers[key]) {
         map.setView(markers[key].getLatLng(), 16);
