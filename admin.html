@@ -3,13 +3,13 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Aplikasi Induk - Live Tracking Driver</title>
+  <title>Aplikasi Induk - Live Tracking</title>
   
   <!-- Leaflet CSS -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
   
   <style>
-    /* Wajib: Set tinggi layar agar peta tidak berukuran 0px */
+    /* Menjamin peta menggunakan seluruh layar HP/Laptop */
     html, body {
       height: 100%;
       margin: 0;
@@ -20,7 +20,7 @@
     #map {
       width: 100%;
       height: 100vh;
-      z-index: 1;
+      background-color: #e5e3df; /* Warna latar dasar jika peta belum memuat tile */
     }
 
     .info-panel {
@@ -29,50 +29,26 @@
       right: 15px;
       z-index: 1000;
       background: rgba(255, 255, 255, 0.95);
-      padding: 15px;
+      padding: 12px 16px;
       border-radius: 8px;
       box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-      max-width: 280px;
-      max-height: 80vh;
-      overflow-y: auto;
+      max-width: 260px;
     }
 
     .info-panel h3 {
-      margin: 0 0 10px 0;
+      margin: 0 0 8px 0;
       font-size: 15px;
       color: #333;
-      border-bottom: 2px solid #007bff;
-      padding-bottom: 5px;
     }
 
     .driver-item {
-      padding: 8px 0;
-      border-bottom: 1px solid #eee;
       font-size: 13px;
-      cursor: pointer;
-    }
-
-    .driver-item:hover {
-      background-color: #f8f9fa;
-    }
-
-    .driver-name {
-      font-weight: bold;
-      color: #007bff;
-    }
-
-    .badge {
-      display: inline-block;
-      background: #28a745;
-      color: white;
-      padding: 2px 6px;
-      border-radius: 4px;
-      font-size: 11px;
-      margin-left: 5px;
+      padding: 6px 0;
+      border-bottom: 1px solid #eee;
     }
   </style>
 
-  <!-- Firebase SDK (v8) -->
+  <!-- Firebase SDK v8 -->
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
   <!-- Leaflet JS -->
@@ -85,23 +61,24 @@
   <div class="info-panel">
     <h3>Driver Aktif (<span id="totalDrivers">0</span>)</h3>
     <div id="driverList">
-      <small style="color: #777;">Mencari data lokasi driver...</small>
+      <small style="color: #666;">Menghubungkan ke database...</small>
     </div>
   </div>
 
   <script>
-    // 1. Konfigurasi Firebase (Sesuaikan dengan data Firebase Anda)
+    // 1. ISIKAN KREDENSIAL FIREBASE ANDA
     const firebaseConfig = {
-      apiKey: "YOUR_API_KEY",
-      authDomain: "YOUR_PROJECT.firebaseapp.com",
-      databaseURL: "https://YOUR_PROJECT-default-rtdb.firebaseio.com",
-      projectId: "YOUR_PROJECT",
-      storageBucket: "YOUR_PROJECT.appspot.com",
-      messagingSenderId: "YOUR_SENDER_ID",
-      appId: "YOUR_APP_ID"
+  apiKey: "AIzaSyA3Ctgfp-1D5HhJbTToljYUmJ62jCmutWg",
+  authDomain: "milarianapps.firebaseapp.com",
+  databaseURL: "https://milarianapps-default-rtdb.firebaseio.com",
+  projectId: "milarianapps",
+  storageBucket: "milarianapps.firebasestorage.app",
+  messagingSenderId: "335524059263",
+  appId: "1:335524059263:web:fc3848ac597f873867074a",
+  measurementId: "G-WBPR6JQVJQ"
     };
 
-    // Inisialisasi Firebase
+    // Inisialisasi Firebase aman
     if (!firebase.apps.length) {
       firebase.initializeApp(firebaseConfig);
     }
@@ -115,49 +92,45 @@
       attribution: '© OpenStreetMap'
     }).addTo(map);
 
-    // Custom Icon Mobil Box
+    // Ikon Mobil Box
     const truckIcon = L.icon({
       iconUrl: 'https://cdn-icons-png.flaticon.com/512/2554/2554978.png',
-      iconSize: [40, 40],
-      iconAnchor: [20, 20],
-      popupAnchor: [0, -18]
+      iconSize: [38, 38],
+      iconAnchor: [19, 19],
+      popupAnchor: [0, -15]
     });
 
     const markers = {};
 
-    // 3. Membaca Data Realtime Firebase
+    // 3. Ambil data Realtime
     database.ref('drivers').on('value', (snapshot) => {
       const data = snapshot.val();
       const driverListEl = document.getElementById('driverList');
       const totalDriversEl = document.getElementById('totalDrivers');
 
       if (!data) {
-        driverListEl.innerHTML = '<small style="color: #777;">Belum ada driver yang aktif.</small>';
+        driverListEl.innerHTML = '<small style="color: #888;">Belum ada driver terhubung.</small>';
         totalDriversEl.innerText = "0";
         return;
       }
 
       const bounds = [];
-      let activeCount = 0;
+      let count = 0;
       let listHTML = '';
 
       for (let key in data) {
         const driver = data[key];
-        
-        // Konversi koordinat ke Number
         const lat = Number(driver.lat);
         const lng = Number(driver.lng);
 
         if (!isNaN(lat) && !isNaN(lng) && lat !== 0 && lng !== 0) {
-          activeCount++;
+          count++;
           bounds.push([lat, lng]);
 
           const popupContent = `
-            <div style="font-size: 13px; line-height: 1.5;">
-              <b style="font-size: 14px; color: #007bff;">🚛 ${driver.nama || 'Driver'}</b><br>
-              <b>Nopol:</b> ${driver.nopol || '-'}<br>
-              <b>Update Terakhir:</b> ${driver.lastUpdate || '-'}
-            </div>
+            <b>🚛 ${driver.nama || 'Driver'}</b><br>
+            <b>Nopol:</b> ${driver.nopol || '-'}<br>
+            <small><b>Update:</b> ${driver.lastUpdate || '-'}</small>
           `;
 
           if (markers[key]) {
@@ -170,24 +143,21 @@
           }
 
           listHTML += `
-            <div class="driver-item" onclick="focusDriver('${key}')">
-              <span class="driver-name">🚛 ${driver.nama || 'Driver'}</span> 
-              <span class="badge">${driver.nopol || '-'}</span><br>
-              <small style="color: #666;">Update: ${driver.lastUpdate || '-'}</small>
+            <div class="driver-item" onclick="focusDriver('${key}')" style="cursor:pointer;">
+              <b>🚛 ${driver.nama || 'Driver'}</b> (${driver.nopol || '-'})
             </div>
           `;
         }
       }
 
-      totalDriversEl.innerText = activeCount;
-      driverListEl.innerHTML = listHTML || '<small style="color: #777;">Tidak ada koordinat valid.</small>';
+      totalDriversEl.innerText = count;
+      driverListEl.innerHTML = listHTML || '<small style="color: #888;">Data koordinat belum valid.</small>';
 
       if (bounds.length > 0) {
-        map.fitBounds(bounds, { maxZoom: 15, padding: [50, 50] });
+        map.fitBounds(bounds, { maxZoom: 15, padding: [40, 40] });
       }
     }, (error) => {
-      console.error("Gagal membaca Firebase:", error);
-      alert("Error membaca database Firebase: " + error.message);
+      document.getElementById('driverList').innerHTML = `<span style="color:red;">Error: ${error.message}</span>`;
     });
 
     function focusDriver(key) {
@@ -196,63 +166,6 @@
         markers[key].openPopup();
       }
     }
-  <script>
-    // Konfigurasi Firebase (Harus sama dengan driver.html)
-   // For Firebase JS SDK v7.20.0 and later, measurementId is optional
-const firebaseConfig = {
-  apiKey: "AIzaSyA3Ctgfp-1D5HhJbTToljYUmJ62jCmutWg",
-  authDomain: "milarianapps.firebaseapp.com",
-  databaseURL: "https://milarianapps-default-rtdb.firebaseio.com",
-  projectId: "milarianapps",
-  storageBucket: "milarianapps.firebasestorage.app",
-  messagingSenderId: "335524059263",
-  appId: "1:335524059263:web:fc3848ac597f873867074a",
-  measurementId: "G-WBPR6JQVJQ"
-    };
-    firebase.initializeApp(firebaseConfig);
-    const database = firebase.database();
-
-    // Inisialisasi Peta (Default pusat di Jakarta)
-    const map = L.map('map').setView([-6.200000, 106.816666], 11);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      maxZoom: 19,
-      attribution: '© OpenStreetMap'
-    }).addTo(map);
-
-    const markers = {};
-
-// Dengarkan perubahan data driver secara Realtime
-database.ref('drivers').on('value', (snapshot) => {
-  const data = snapshot.val();
-  if (!data) return;
-
-  for (let key in data) {
-    const driver = data[key];
-
-    // Konversi paksa ke Number
-    const lat = Number(driver.lat);
-    const lng = Number(driver.lng);
-
-    // Cek apakah angka valid (bukan NaN)
-    if (!isNaN(lat) && !isNaN(lng) && lat !== 0 && lng !== 0) {
-      if (markers[key]) {
-        markers[key].setLatLng([lat, lng]);
-      } else {
-        const marker = L.marker([lat, lng]).addTo(map);
-        marker.bindPopup(`<b>${driver.nama}</b><br>${driver.nopol}`);
-        markers[key] = marker;
-      }
-    }
-  }
-
-  // Otomatis sesuaikan tampilan peta agar semua driver terlihat
-  if (bounds.length > 0) {
-    map.fitBounds(bounds, { maxZoom: 15, padding: [50, 50] });
-  }
-}, (error) => {
-  console.error("Gagal mengambil data Firebase:", error);
-  alert("Gagal membaca database: " + error.message);
-});
   </script>
 </body>
 </html>
