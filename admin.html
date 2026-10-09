@@ -47,14 +47,8 @@
       cursor: pointer;
     }
 
-    /* Style CSS untuk Rotasi Ikon Mobil Tampak Atas secara Halus */
     .cdd-box-icon {
-      transition: all 0.5s ease-in-out;
-    }
-    .cdd-box-icon img {
-      width: 100%;
-      height: 100%;
-      transition: transform 0.4s ease-in-out;
+      transition: all 0.3s ease-in-out;
     }
   </style>
 
@@ -76,7 +70,7 @@
   </div>
 
   <script>
-    // 1. KREDENSIAL FIREBASE
+    // 1. KREDENSIAL FIREBASE (Isi dengan milik Anda)
     const firebaseConfig = {
   apiKey: "AIzaSyA3Ctgfp-1D5HhJbTToljYUmJ62jCmutWg",
   authDomain: "milarianapps.firebaseapp.com",
@@ -101,25 +95,28 @@
       attribution: '© OpenStreetMap'
     }).addTo(map);
 
-    // Fungsi membuat HTML Ikon CDD Box Tampak Atas dengan Rotasi CSS
+    // Fungsi Ikon SVG CDD Box: Kepala Putih (#ffffff) & Bodi Abu-abu (#6c757d)
     function createCddIconHtml(heading = 0) {
-      // SVG / Gambar Mobil CDD Box Tampak Atas
       const truckSvg = `
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 80" width="30" height="60">
-          <!-- Kepala Kabin CDD -->
-          <rect x="8" y="2" width="24" height="18" rx="4" fill="#d9534f" stroke="#333" stroke-width="1.5" />
-          <rect x="10" y="5" width="20" height="6" rx="1" fill="#87ceeb" />
-          <!-- Kaca Spion -->
-          <rect x="4" y="10" width="4" height="6" fill="#333" />
-          <rect x="32" y="10" width="4" height="6" fill="#333" />
-          <!-- Karoseri CDD Box Belakang -->
-          <rect x="6" y="22" width="28" height="52" rx="2" fill="#e9ecef" stroke="#333" stroke-width="2" />
-          <line x1="20" y1="22" x2="20" y2="74" stroke="#ccc" stroke-width="1" />
-          <!-- Ban -->
-          <rect x="4" y="26" width="3" height="10" fill="#111" />
-          <rect x="33" y="26" width="3" height="10" fill="#111" />
-          <rect x="4" y="60" width="3" height="10" fill="#111" />
-          <rect x="33" y="60" width="3" height="10" fill="#111" />
+          <!-- Kepala (Kabin) CDD - Warna Putih -->
+          <rect x="8" y="2" width="24" height="18" rx="4" fill="#ffffff" stroke="#333333" stroke-width="1.5" />
+          <!-- Kaca Depan -->
+          <rect x="10" y="5" width="20" height="6" rx="1" fill="#87ceeb" stroke="#333333" stroke-width="0.5" />
+          <!-- Kaca Spion Kiri & Kanan -->
+          <rect x="4" y="10" width="4" height="6" fill="#333333" />
+          <rect x="32" y="10" width="4" height="6" fill="#333333" />
+          
+          <!-- Karoseri Box Belakang - Warna Abu-abu -->
+          <rect x="6" y="22" width="28" height="52" rx="2" fill="#6c757d" stroke="#212529" stroke-width="2" />
+          <!-- Garis Lis Atas Box -->
+          <line x1="20" y1="22" x2="20" y2="74" stroke="#495057" stroke-width="1.5" />
+          
+          <!-- Ban Mobil -->
+          <rect x="3" y="26" width="3" height="10" fill="#111111" />
+          <rect x="34" y="26" width="3" height="10" fill="#111111" />
+          <rect x="3" y="60" width="3" height="10" fill="#111111" />
+          <rect x="34" y="60" width="3" height="10" fill="#111111" />
         </svg>
       `;
 
@@ -161,7 +158,7 @@
 
           const popupContent = `
             <div style="font-size:13px; line-height:1.5;">
-              <b style="color:#d9534f; font-size:14px;">🚚 CDD Box - ${driver.nama || 'Driver'}</b><br>
+              <b style="color:#333; font-size:14px;">🚚 CDD Box - ${driver.nama || 'Driver'}</b><br>
               <b>Nopol:</b> ${driver.nopol || '-'}<br>
               <b>Kecepatan:</b> ${speed} km/jam<br>
               <b>Arah Rotasi:</b> ${heading}°<br>
@@ -169,7 +166,6 @@
             </div>
           `;
 
-          // Buat Leaflet DivIcon dengan rotasi dinamis
           const customDivIcon = L.divIcon({
             className: 'cdd-box-icon',
             html: createCddIconHtml(heading),
@@ -179,12 +175,10 @@
           });
 
           if (markers[key]) {
-            // Update posisi dan rotasi ikon
             markers[key].setLatLng([lat, lng]);
             markers[key].setIcon(customDivIcon);
             markers[key].getPopup().setContent(popupContent);
           } else {
-            // Buat marker baru
             const marker = L.marker([lat, lng], { icon: customDivIcon }).addTo(map);
             marker.bindPopup(popupContent);
             markers[key] = marker;
